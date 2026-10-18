@@ -1,0 +1,45 @@
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: dev_mariadb
+    restart: unless-stopped
+    ports:
+      - "${MARIADB_PORT:-3309}:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-my_database}
+      MARIADB_USER: ${MARIADB_USER:-dbuser}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-dbpass}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: dev_phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - "${PMA_PORT:-8086}:80"
+    environment:
+      # Mengizinkan login ke server manapun
+      PMA_ARBITRARY: 1
+      # Host default diarahkan langsung ke container mariadb
+      PMA_HOST: ${PMA_HOST:-mariadb}
+      PMA_PORT: ${PMA_PORT_DB:-3306}
+      # Ukuran batas impor database (.sql / .zip)
+      UPLOAD_LIMIT: ${PMA_UPLOAD_LIMIT:-256M}
+      MEMORY_LIMIT: 512M
+    extra_hosts:
+      # Memungkinkan koneksi ke database host lokal Windows (XAMPP/Laragon/DB host lainnya)
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mariadb_data:
+    driver: local
