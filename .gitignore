@@ -1,0 +1,9 @@
+# Environment variables file (jaga kerahasiaan kredensial database)
+.env
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
