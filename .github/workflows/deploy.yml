@@ -26,6 +26,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: 🌐 Prepare & Verify VPS Connection
+        id: vps-check
+        run: |
+          RAW_HOST="${{ secrets.VPS_HOST || secrets.HOST || secrets.SSH_HOST }}"
+          RAW_PORT="${{ secrets.VPS_PORT || secrets.PORT || secrets.SSH_PORT || 22 }}"
+
+          # Bersihkan spasi, http://, https://, dan :port jika ada
+          CLEAN_HOST=$(echo "$RAW_HOST" | sed -e 's|^[^/]*://||' -e 's|/.*$||' -e 's|:.*$||' | tr -d '[:space:]')
+          CLEAN_PORT=$(echo "$RAW_PORT" | tr -d '[:space:]')
+
+          # Pastikan port adalah angka valid, fallback ke 22
+          if ! [[ "$CLEAN_PORT" =~ ^[0-9]+$ ]]; then
+            CLEAN_PORT=22
+          fi
+
+          echo "Target Host: $CLEAN_HOST"
+          echo "Target Port: $CLEAN_PORT"
+          echo "clean_host=$CLEAN_HOST" >> "$GITHUB_OUTPUT"
+          echo "clean_port=$CLEAN_PORT" >> "$GITHUB_OUTPUT"
+
+          echo "Menguji jangkauan port $CLEAN_PORT ke $CLEAN_HOST..."
+          nc -zv -w 10 "$CLEAN_HOST" "$CLEAN_PORT"
+
       - name: Execute Deployment via SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -34,10 +57,12 @@ jobs:
           REPO_NAME: ${{ github.repository }}
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          host: ${{ secrets.VPS_HOST || secrets.HOST || secrets.SSH_HOST }}
+          host: ${{ steps.vps-check.outputs.clean_host }}
           username: ${{ secrets.VPS_USERNAME || secrets.USERNAME || secrets.SSH_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD || secrets.PASSWORD || secrets.SSH_PASSWORD }}
-          port: ${{ secrets.VPS_PORT || secrets.PORT || secrets.SSH_PORT || 22 }}
+          port: ${{ steps.vps-check.outputs.clean_port }}
+          timeout: 60s
+          protocol: tcp4
           envs: ENV_CONTENT,TARGET_DIR,REPO_NAME,REPO_TOKEN
           script: |
             set -e
