@@ -1,7 +1,7 @@
 services:
   mariadb:
     image: mariadb:10.11
-    container_name: dev_mariadb
+    container_name: dev_mariadb_myadmin
     restart: unless-stopped
     ports:
       - "${MARIADB_PORT:-3309}:3306"

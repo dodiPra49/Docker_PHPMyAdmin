@@ -126,6 +126,8 @@ jobs:
             $DOCKER_COMPOSE pull
 
             echo "▶ Menjalankan service (MariaDB & phpMyAdmin)..."
+            # Hapus container lama jika ada konflik nama dari direktori/deploy sebelumnya
+            docker rm -f dev_mariadb dev_phpmyadmin 2>/dev/null || true
             $DOCKER_COMPOSE up -d --remove-orphans
 
             # 7. Bersihkan image lama yang tidak terpakai
